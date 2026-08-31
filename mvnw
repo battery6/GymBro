@@ -1,16 +1,42 @@
 #!/bin/sh
 # ----------------------------------------------------------------------------
 # Minimal Maven bootstrap wrapper.
+#   - Locate a JDK (needs javac, not just a JRE) and export JAVA_HOME.
 #   - If `mvn` is already on PATH, delegate to it.
 #   - Otherwise download a pinned Apache Maven into .mvn/ and use that.
-# This keeps the repo buildable without a system Maven and without committing
-# a binary wrapper jar.
+# Keeps the repo buildable without a system Maven and without committing a
+# binary wrapper jar.
 # ----------------------------------------------------------------------------
 set -e
 
 MAVEN_VERSION="3.9.9"
 BASE_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# --- Locate a JDK -----------------------------------------------------------
+if [ -z "$JAVA_HOME" ] || [ ! -x "$JAVA_HOME/bin/javac" ]; then
+  if command -v javac >/dev/null 2>&1; then
+    : # a JDK is already on PATH; let Maven use it
+  else
+    for candidate in \
+        "$HOME/.local/jdk-21" \
+        /usr/lib/jvm/java-21-openjdk \
+        /usr/lib/jvm/java-25-openjdk \
+        /opt/android-studio/jbr; do
+      if [ -x "$candidate/bin/javac" ]; then
+        JAVA_HOME="$candidate"
+        export JAVA_HOME
+        PATH="$JAVA_HOME/bin:$PATH"
+        export PATH
+        break
+      fi
+    done
+  fi
+fi
+if ! command -v javac >/dev/null 2>&1 && { [ -z "$JAVA_HOME" ] || [ ! -x "$JAVA_HOME/bin/javac" ]; }; then
+  echo "WARNING: no JDK with 'javac' found. Set JAVA_HOME to a JDK 21+ install." >&2
+fi
+
+# --- Locate Maven ---------------------------------------------------------
 if command -v mvn >/dev/null 2>&1; then
   exec mvn "$@"
 fi
