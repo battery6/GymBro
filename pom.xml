@@ -110,6 +110,13 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- Backs TestRestTemplate; the default HttpURLConnection client throws
+                 HttpRetryException on a 401 response to a POST with a body. -->
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
