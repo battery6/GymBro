@@ -1,0 +1,32 @@
+# Build output
+target/
+build/
+!.mvn/wrapper/maven-wrapper.properties
+
+# Bootstrapped Maven (downloaded by ./mvnw when mvn is not on PATH)
+.mvn/apache-maven-*/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+bin/
+nbproject/private/
+
+# Env / secrets
+.env
+.env.local
+*.local
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/

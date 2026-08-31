@@ -1,0 +1,10 @@
+.git/
+.github/
+target/
+.mvn/apache-maven-*/
+*.md
+!DESIGN.md
+.env
+.env.local
+.idea/
+.vscode/

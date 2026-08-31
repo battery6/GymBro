@@ -1,0 +1,26 @@
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: none
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+gymbro:
+  jwt:
+    secret: test-secret-test-secret-test-secret-0123456789
+    issuer: gymbro
+    access-token-ttl: 15m
+    refresh-token-ttl: 30d
+  rate-limit:
+    auth:
+      capacity: 1000
+      window: 1m
+
+management:
+  health:
+    redis:
+      enabled: false
