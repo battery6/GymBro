@@ -52,7 +52,7 @@ to come from somewhere.
 
 **Decision (as built).** Instant columns (`created_at`, `start_time`,
 `end_time`, `logged_at`) are `timestamptz`. Each row that gets grouped by day
-also carries an explicit `date` column — `workout_session.date` (default
+also carries an explicit `date` column — `workout_session.at_date` (default
 `current_date`), and the equivalent on `meal_entry` when nutrition is built —
 set from the user's local day at write time. Reports `GROUP BY` that column
 directly. `app_user.timezone` is still stored for display and future use.

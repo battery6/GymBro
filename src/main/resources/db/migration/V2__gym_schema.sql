@@ -1,3 +1,5 @@
+-- Tables are created in dependency order so each FK target already exists.
+
 create table exercise (
     id bigint generated always as identity primary key,
     created_by bigint references app_user(id) on delete set null,
@@ -30,6 +32,37 @@ create table workout_template (
     updated_at timestamptz not null default now()
 );
 
+create table workout_program (
+    id bigint generated always as identity primary key,
+    user_id bigint not null references app_user(id),
+    name text not null,
+    description text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table program_template (
+    id bigint generated always as identity primary key,
+    program_id bigint not null references workout_program(id) on delete cascade,
+    template_id bigint not null references workout_template(id),
+    order_index integer not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (program_id, order_index)
+);
+
+create table workout_session (
+    id bigint generated always as identity primary key,
+    user_id bigint not null references app_user(id),
+    template_id bigint references workout_template(id) on delete set null,
+    at_date date not null default current_date,
+    start_time timestamptz not null default now(),
+    end_time timestamptz,
+    notes text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
 create table template_exercise (
     id bigint generated always as identity primary key,
     template_id bigint not null references workout_template(id) on delete cascade,
@@ -41,18 +74,6 @@ create table template_exercise (
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     unique (template_id, order_index)
-);
-
-create table workout_session (
-    id bigint generated always as identity primary key,
-    user_id bigint not null references app_user(id),
-    template_id bigint references workout_template(id) on delete set null,
-    date date not null default current_date,
-    start_time timestamptz not null default now(),
-    end_time timestamptz,
-    notes text,
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now()
 );
 
 create table set_entry (
@@ -72,6 +93,9 @@ create table set_entry (
 -- primary key is). Add indexes on FKs that will be filtered/joined on
 -- frequently -- user_id lookups and session/template lookups especially.
 create index idx_workout_template_user_id on workout_template(user_id);
+create index idx_workout_program_user_id on workout_program(user_id);
+create index idx_program_template_program_id on program_template(program_id);
+create index idx_program_template_template_id on program_template(template_id);
 create index idx_template_exercise_template_id on template_exercise(template_id);
 create index idx_workout_session_user_id on workout_session(user_id);
 create index idx_workout_session_template_id on workout_session(template_id);

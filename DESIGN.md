@@ -55,7 +55,7 @@ applications, and used daily as a personal training/nutrition log.
 
 - Instants (`created_at`, `start_time`, `logged_at`, …) are stored as
   `timestamptz`. Calendar-day grouping uses an explicit stored `date` on the
-  logged row (`workout_session.date`, `meal_entry` date) rather than deriving
+  logged row (`workout_session.at_date`, `meal_entry` date) rather than deriving
   it per-user-timezone. `[ADR-002]`
 - All user-owned resources are scoped to the authenticated principal at the
   repository layer. Requests for another user's resource return `404`, not
@@ -101,7 +101,18 @@ applications, and used daily as a personal training/nutrition log.
 **workout_template**
 - `id`, `user_id` (FK `app_user`), `name`, `description` (nullable),
   `created_at`, `updated_at`
-- A reusable *plan*, e.g. "Push Day A".
+- A reusable *plan* for one session, e.g. "Push Day A".
+
+**workout_program**
+- `id`, `user_id` (FK `app_user`), `name`, `description` (nullable),
+  `created_at`, `updated_at`
+- A multi-day plan (e.g. "PPL 6-day") that sequences templates.
+
+**program_template**
+- `id`, `program_id` (FK `workout_program`, cascade), `template_id`
+  (FK `workout_template`), `order_index`, `created_at`, `updated_at`
+- `UNIQUE (program_id, order_index)`. One template may appear in several
+  programs (and more than once in a program, at different positions).
 
 **template_exercise**
 - `id`, `template_id` (FK `workout_template`, cascade), `exercise_id`
@@ -111,11 +122,11 @@ applications, and used daily as a personal training/nutrition log.
 
 **workout_session**
 - `id`, `user_id` (FK `app_user`), `template_id` (nullable FK,
-  `ON DELETE SET NULL` — sessions can be freeform), `date` (date, default
+  `ON DELETE SET NULL` — sessions can be freeform), `at_date` (date, default
   `current_date`), `start_time` (timestamptz), `end_time` (nullable
   timestamptz — a session is "complete" once this is set), `notes`,
   `created_at`, `updated_at`
-- The `date` is stored explicitly rather than derived from a timezone-adjusted
+- `at_date` is stored explicitly rather than derived from a timezone-adjusted
   timestamp. `[ADR-002]`
 
 **set_entry**
@@ -167,7 +178,7 @@ applications, and used daily as a personal training/nutrition log.
   `Food` (especially a re-synced USDA row) do not rewrite history. The
   `food_id` is kept for provenance and re-logging convenience. `[ADR-004]`
 - Stores an explicit `date` alongside `logged_at`, set from the client's local
-  day (consistent with `workout_session.date`, `[ADR-002]`).
+  day (consistent with `workout_session.at_date`, `[ADR-002]`).
 
 **NutritionGoal**
 - `id`, `user_id`, `calories`, `protein_g`, `carbs_g`, `fat_g`,
@@ -190,7 +201,7 @@ applications, and used daily as a personal training/nutrition log.
 ### 3.3 Connective / reporting layer
 
 **DailyLog** — computed on demand, not stored. `[ADR-007]`
-- Aggregates per user per day (`workout_session.date` / `meal_entry` date):
+- Aggregates per user per day (`workout_session.at_date` / `meal_entry` date):
   total working-set volume, volume by muscle group, total calories, macro
   totals, the active `NutritionGoal` for that day, and whether a session was
   completed (`end_time IS NOT NULL`).
@@ -209,7 +220,7 @@ applications, and used daily as a personal training/nutrition log.
    Joins `set_entry` → `exercise` → `exercise_muscle_group` → `muscle_group`,
    attributes each set's `reps × weight_kg` to every linked muscle group
    (optionally `is_primary` only), buckets by ISO week of
-   `workout_session.date`. Watch for N+1; use a projection query.
+   `workout_session.at_date`. Watch for N+1; use a projection query.
 
 2. **Progressive-overload suggestion** — pure function, no repository access.
    Spec'd in section 6.
