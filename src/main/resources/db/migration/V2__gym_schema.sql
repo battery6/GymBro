@@ -4,7 +4,6 @@ create table exercise (
     name text not null,
     equipment text,
     description text,
-    is_custom boolean not null default false,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );

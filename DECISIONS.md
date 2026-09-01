@@ -225,23 +225,22 @@ can't replace a running log yet.
 
 ---
 
-## ADR-010 — Keep `exercise.is_custom` as an explicit flag
+## ADR-010 — No `exercise.is_custom` column; derive it from `created_by`
 
-**Date:** 2026-08-31 · **Revisited:** 2026-09-01 · **Status:** Accepted (reversed)
+**Date:** 2026-08-31 · **Status:** Accepted
 
-**Original decision.** Drop `is_custom` — it is exactly `created_by IS NOT
-NULL`, and storing both invites them disagreeing.
+**Decision.** `exercise` has no `is_custom` column. "Custom" is exactly
+`created_by IS NOT NULL` (null `created_by` = system-seeded). The API exposes
+`isCustom` as a derived field on the DTO; queries filter on `created_by IS
+[NOT] NULL`, optionally with a partial index if it ever gets hot.
 
-**Decision (as built in `V2__gym_schema.sql`).** `exercise.is_custom`
-(bool, default false) is stored. The application sets it alongside `created_by`
-when a user creates a custom exercise. It makes "show me only the standard
-library" / "only my exercises" filters a plain indexed predicate and keeps the
-door open for a future custom exercise that isn't tied to a single creator
-(e.g. shared within a group).
+**Context.** An early `V2__gym_schema.sql` draft carried a stored `is_custom`
+boolean. It was removed: it duplicates information already in `created_by`, and
+two columns that must agree eventually won't.
 
-**Trade-offs.** `is_custom` and `created_by` can drift out of sync if code
-forgets to set both — mitigated by doing it in one service method and, if
-needed later, a `CHECK (is_custom = (created_by IS NOT NULL))` constraint.
+**Trade-offs.** A future notion of "custom but not owned by one user" (e.g. an
+exercise shared within a group) would need a real column again — but that
+feature isn't planned, and adding the column then is a trivial migration.
 
 ---
 

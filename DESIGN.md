@@ -80,9 +80,9 @@ applications, and used daily as a personal training/nutrition log.
 **exercise**
 - `id`, `created_by` (nullable FK to `app_user`, `ON DELETE SET NULL`; null =
   system-seeded), `name`, `equipment` (text, nullable), `description`
-  (nullable), `is_custom` (bool, default false), `created_at`, `updated_at`
-- `is_custom` is an explicit denormalized flag the application sets alongside
-  `created_by` (kept for simple filtering). `[ADR-010]`
+  (nullable), `created_at`, `updated_at`
+- No `is_custom` column — "custom" is exactly `created_by IS NOT NULL`, exposed
+  as a derived `isCustom` field on the DTO. `[ADR-010]`
 - Seeded via a Flyway migration (`V00X__seed_exercises.sql`), not an
   application startup runner — deterministic, versioned, testable. `[ADR-008]`
 
