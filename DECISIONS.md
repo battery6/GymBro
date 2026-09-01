@@ -333,26 +333,32 @@ this one table. Accepted as the least-bad option; it's a well-worn convention
 
 ---
 
-## ADR-016 — Migrations are mutable pre-v1, immutable after the first real deploy
+## ADR-016 — Migrations are mutable pre-v1, immutable from the first release
 
 **Date:** 2026-09-01 · **Status:** Accepted
 
-**Context.** During early development the schema is still being shaped. `V1` has
-been renamed, `V2` rewritten several times, table names changed. Flyway's normal
-rule — never touch an applied migration — would make this churn painful.
+**"v1" here** means the first running/deployed version of the application — the
+first release. It does not exist yet; the entire current codebase is pre-v1.
+(Not to be confused with the Flyway file `V1__user_schema.sql`.)
+
+**Context.** During early development the schema is still being shaped: the
+`V1__…` file has been renamed, `V2__…` rewritten several times, table names
+changed. Flyway's normal rule — never touch an applied migration — would make
+this churn painful and would have us adding a new migration file for every
+small correction.
 
 **Decision.**
-- **Pre-v1 (no real deployment yet).** Migration files are treated as mutable.
-  They can be edited, reordered, renamed, or squashed freely. This is safe
-  because no database holds a durable `flyway_schema_history`: every test run
+- **Pre-v1 (now, no release).** Migration files are treated as mutable: edit,
+  reorder, rename, or squash them freely to keep the schema definition clean.
+  Safe because no database holds a durable `flyway_schema_history` — every test
   and CI run uses a throwaway Testcontainers Postgres, and the local
   `scripts/dev-infra.sh` database has no volume. If a local dev database drifts,
   drop it and re-migrate.
-- **Post-v1 (from the first real deployment).** Standard Flyway immutability
-  applies. Applied migrations are never edited; every schema change ships as a
-  new `V{n}__*.sql`. `flyway repair` is used only deliberately, for a known
-  reason. Before that first deploy, consider squashing `V1..Vn` into a single
-  clean baseline.
+- **From v1 onward (first release).** Standard Flyway immutability applies.
+  Applied migrations are never edited; every schema change ships as a new
+  `V{n}__*.sql`. `flyway repair` only for a known, deliberate reason. Squash
+  `V1..Vn` into one clean baseline migration as part of preparing that first
+  release.
 
 **Trade-offs.** Anyone pulling the repo mid-development may need to recreate
 their local database after a migration is rewritten rather than getting an
