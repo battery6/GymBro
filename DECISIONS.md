@@ -8,77 +8,99 @@ Status values: **Accepted**, **Superseded by ADR-NNN**, **Revisited**.
 
 ---
 
-## ADR-001 — Exercise-to-muscle-group is a weighted many-to-many
+## ADR-001 — Exercise-to-muscle-group is a plain many-to-many with an `is_primary` flag
 
-**Date:** 2026-08-31 · **Status:** Accepted
+**Date:** 2026-08-31 · **Revisited:** 2026-09-01 · **Status:** Accepted (simplified)
 
 **Context.** The reporting feature "weekly training volume trend per muscle
 group" needs to attribute each set's volume to muscles. A single
-`Exercise.muscle_group` column can't represent compound lifts — a bench press
+`exercise.muscle_group` column can't represent compound lifts — a bench press
 trains chest, triceps, and front delts — so that report would be wrong for
 exactly the lifts that matter most.
 
-**Decision.** Model `ExerciseMuscle(exercise_id, muscle_group, role,
-contribution)` where `contribution` is a 0–1 weight. Per-muscle volume for a
-set is `reps × weight × contribution`. `muscle_group` is an enum, not a table
-or free text. Seed data follows the convention that contributions sum to ~1.0
-per exercise, but this is not enforced.
+**Decision (as built in `V2__gym_schema.sql`).** `muscle_group` is a **table**
+(`id`, `name`); `exercise_muscle_group(exercise_id, muscle_group_id,
+is_primary)` is the join, PK `(exercise_id, muscle_group_id)`, with an index on
+`muscle_group_id`. A set's `reps × weight_kg` is attributed in full to each
+linked muscle group; the volume report can optionally restrict to
+`is_primary = true` to avoid multi-counting compound lifts.
 
-**Alternatives considered.**
-- `primary_muscle` + `secondary_muscles[]` — simpler, but "secondary" is
-  binary and can't express that triceps get ~25% of a bench press vs ~15% for
-  front delts. Reports would over-count secondary muscles.
-- Single enum column — rejected, see Context.
+**Original decision (2026-08-31, superseded).** `muscle_group` as an enum and a
+join carrying `role` + a `contribution` weight (0–1), so a bench press could be
+booked as chest 0.60 / triceps 0.25 / front-delt 0.15 and volume apportioned
+fractionally.
 
-**Trade-offs.** More seed-data effort (every seeded exercise needs a
-contribution breakdown, which is somewhat subjective). One extra join in the
-volume query. Accepted because the weighted model is the feature's whole point
-and is a good data-modeling talking point.
+**Why the change.** The weighted model needs a defensible contribution number
+for every seeded exercise/muscle pair — subjective, time-consuming, and not
+worth it for a personal tracker. A table (rather than an enum) also lets muscle
+groups be managed as data without a migration.
+
+**Trade-offs.** Volume-by-muscle can't be apportioned — a muscle is either
+credited with the full set or (if filtered) not at all. Totals across muscle
+groups will exceed total session volume when secondary muscles are counted.
+Acceptable; revisit if the report proves misleading.
 
 ---
 
-## ADR-002 — All event timestamps are `timestamptz` UTC; calendar dates are derived per-user
+## ADR-002 — Instants are `timestamptz`; day grouping uses an explicit stored `date`
 
-**Date:** 2026-08-31 · **Status:** Accepted
+**Date:** 2026-08-31 · **Revisited:** 2026-09-01 · **Status:** Accepted (simplified)
 
 **Context.** Nearly every report buckets events into days: "meals on date X",
-"training days vs rest days", "trailing 7-day adherence". If a naive date is
-stored, or the day boundary is computed in the server's timezone, an 11pm meal
-lands in the wrong day and every downstream aggregate is subtly off.
+"training days vs rest days", "trailing 7-day adherence". The day boundary has
+to come from somewhere.
 
-**Decision.** Store every user-event timestamp as `timestamptz` in UTC. Add
-`User.timezone` (IANA string). Derive local dates in queries as
-`date(ts AT TIME ZONE user.timezone)`. Remove the previously proposed stored
-`WorkoutSession.date` column — it was redundant with `started_at` and a source
-of drift.
+**Decision (as built).** Instant columns (`created_at`, `start_time`,
+`end_time`, `logged_at`) are `timestamptz`. Each row that gets grouped by day
+also carries an explicit `date` column — `workout_session.date` (default
+`current_date`), and the equivalent on `meal_entry` when nutrition is built —
+set from the user's local day at write time. Reports `GROUP BY` that column
+directly. `app_user.timezone` is still stored for display and future use.
 
-**Trade-offs.** Slightly more complex queries (timezone expression in GROUP
-BY, can't index a stored date directly — mitigated with expression indexes if
-needed). Users travelling across timezones will see historical days bucketed
-by their *current* timezone; acceptable for a personal tracker.
+**Original decision (2026-08-31, superseded).** Store only `timestamptz`, no
+`date` column, and derive the local day in every query as
+`date(ts AT TIME ZONE app_user.timezone)`.
+
+**Why the change.** The derived approach puts a timezone join and a function
+call in the `GROUP BY` of every reporting query and can't use a plain index. A
+stored `date` keeps the queries simple and indexable.
+
+**Trade-offs.** The `date` is only as correct as whatever set it — a client
+sending the wrong local day, or the server default `current_date` firing in the
+server's timezone, produces a wrong bucket. The app must set `date` deliberately
+from the caller's local day rather than relying on the column default. Editing a
+session's timestamps does not auto-correct its `date`.
 
 ---
 
-## ADR-003 — Sessions snapshot their planned structure into `SessionExercise`
+## ADR-003 — Sessions do not snapshot the template; sets link session + exercise directly
 
-**Date:** 2026-08-31 · **Status:** Accepted
+**Date:** 2026-08-31 · **Revisited:** 2026-09-01 · **Status:** Accepted (simplified)
 
-**Context.** A `WorkoutSession` may be created from a `WorkoutTemplate`. If the
-session only holds `template_id` and reads targets from the live template,
-then editing or deleting that template later rewrites what past sessions were
-"planned" to be, breaking planned-vs-actual analysis.
+**Context.** A `workout_session` may be created from a `workout_template`. If
+the session reads targets from the live template, editing or deleting that
+template later changes what past sessions appear to have been "planned" to be.
 
-**Decision.** On session creation from a template, copy the template's
-per-exercise targets into `SessionExercise` rows (`planned_sets`,
-`planned_reps_min/max`, `planned_rpe`). The session is thereafter
-self-contained. Freeform sessions create `SessionExercise` rows on demand with
-null planned values. `SetEntry` hangs off `SessionExercise`, not the session
-directly.
+**Decision (as built in `V2__gym_schema.sql`).** No `session_exercise` table.
+`set_entry` carries `session_id` and `exercise_id` directly. A session keeps a
+nullable `template_id` (`ON DELETE SET NULL`) purely as a reference. Any
+"planned vs actual" view reads `template_exercise` as it stands now.
 
-**Trade-offs.** Data duplication between `TemplateExercise` and
-`SessionExercise`. One more table. Accepted — it is the same plan-vs-record
-principle the domain already commits to for templates vs sessions, and it is
-cheap.
+**Original decision (2026-08-31, superseded).** Copy the template's per-exercise
+targets into `session_exercise` rows at session creation so the session is a
+self-contained historical record; hang `set_entry` off `session_exercise`.
+
+**Why the change.** The snapshot adds a table and a copy step for a
+planned-vs-actual comparison that isn't in the v1 feature list. What actually
+happened (the `set_entry` rows) is already immutable; only the *plan* reference
+is soft.
+
+**Trade-offs.** Editing or deleting a template retroactively changes the
+baseline any planned-vs-actual view would show for older sessions. If that
+comparison becomes a real feature, reintroduce the snapshot (or snapshot just
+the `target_*` values onto `set_entry`). The frozen-`MealEntry` approach in
+ADR-004 is deliberately kept, because there the mutable input (`Food`) feeds a
+*number* that is the whole point of the record.
 
 ---
 
@@ -203,31 +225,49 @@ can't replace a running log yet.
 
 ---
 
-## ADR-010 — Drop `Exercise.is_custom`
+## ADR-010 — Keep `exercise.is_custom` as an explicit flag
 
-**Date:** 2026-08-31 · **Status:** Accepted
+**Date:** 2026-08-31 · **Revisited:** 2026-09-01 · **Status:** Accepted (reversed)
 
-`is_custom` is exactly `created_by IS NOT NULL`. Storing it invites the two
-fields disagreeing. Derive it in the DTO. (If a hot query ever needs it
-indexed, revisit as a denormalization with a documented reason.)
+**Original decision.** Drop `is_custom` — it is exactly `created_by IS NOT
+NULL`, and storing both invites them disagreeing.
+
+**Decision (as built in `V2__gym_schema.sql`).** `exercise.is_custom`
+(bool, default false) is stored. The application sets it alongside `created_by`
+when a user creates a custom exercise. It makes "show me only the standard
+library" / "only my exercises" filters a plain indexed predicate and keeps the
+door open for a future custom exercise that isn't tied to a single creator
+(e.g. shared within a group).
+
+**Trade-offs.** `is_custom` and `created_by` can drift out of sync if code
+forgets to set both — mitigated by doing it in one service method and, if
+needed later, a `CHECK (is_custom = (created_by IS NOT NULL))` constraint.
 
 ---
 
-## ADR-011 — Bodyweight-exercise volume uses added load plus bodyweight
+## ADR-011 — Bodyweight-exercise volume: log the effective load in `weight_kg`
 
-**Date:** 2026-08-31 · **Status:** Accepted
+**Date:** 2026-08-31 · **Revisited:** 2026-09-01 · **Status:** Accepted (simplified)
 
-**Context.** Pull-ups and dips logged with `weight_kg = 0` would contribute
-zero volume, understating training load badly.
+**Context.** Pull-ups and dips logged with `weight_kg = 0` contribute zero
+volume, understating training load.
 
-**Decision.** `Exercise.is_bodyweight` flag. For flagged exercises,
-`effective_weight_kg = weight_kg (added load) + session.bodyweight_kg`, falling
-back to the user's most recent known bodyweight. If no bodyweight is known, the
-set contributes 0 and the response flags it so the client can prompt.
+**Decision (as built).** No `is_bodyweight` column and no `bodyweight_kg` on
+the session. The user logs the *effective* load in `weight_kg` — bodyweight
+plus any added plate, or an estimate — and volume is `reps × weight_kg` like
+any other set. The progression suggester treats a set logged at `weight_kg = 0`
+as a signal to advance reps rather than load.
 
-**Trade-offs.** Volume for bodyweight work depends on a bodyweight estimate
-that may be stale. Accepted as far better than zero; users are nudged to log
-bodyweight.
+**Original decision (2026-08-31, superseded).** An `is_bodyweight` flag plus
+`session.bodyweight_kg`, with `effective_weight_kg = added load + bodyweight`.
+
+**Why the change.** It removes a column, a per-session bodyweight-capture step,
+and a stale-estimate fallback, in exchange for asking the user to enter one
+number they already know.
+
+**Trade-offs.** Historical bodyweight isn't tracked automatically, so
+bodyweight-only volume trends reflect whatever the user typed. A `DailyMetric`
+bodyweight field (DESIGN §3.3) can feed this later if wanted.
 
 ---
 
@@ -262,8 +302,32 @@ demo-able feature set arrives a little later.
 **Date:** 2026-08-31 · **Status:** Accepted
 
 The reporting queries use hand-written SQL, Postgres range types, `citext`,
-expression-based date bucketing, and `ON CONFLICT`. H2's compatibility modes
-don't cover these, so an H2-backed test would pass against code that fails in
-production. `@DataJpaTest` and controller integration tests use a
-Testcontainers Postgres matching the prod major version. Trade-off: tests need
-Docker available and are a few seconds slower to start.
+date bucketing, and `ON CONFLICT`. H2's compatibility modes don't cover these,
+so an H2-backed test would pass against code that fails in production.
+`@DataJpaTest` and controller integration tests use a Testcontainers Postgres
+matching the prod major version. Trade-off: tests need a container engine
+available (Docker, or rootless podman — see README) and are a few seconds
+slower to start.
+
+---
+
+## ADR-015 — Table names are singular; the users table is `app_user`
+
+**Date:** 2026-09-01 · **Status:** Accepted
+
+**Context.** Table names were standardised to singular (`exercise`,
+`workout_session`, `set_entry`, …) for consistency. `user`, however, is a
+reserved word in PostgreSQL — `create table user (...)` is a syntax error, and
+every reference would need to be quoted `"user"`.
+
+**Decision.** The users table is `app_user`; the refresh-token table is
+`refresh_token`. Entities map with `@Table(name = "app_user")` /
+`@Table(name = "refresh_token")`. The Java class stays `User`.
+
+**Alternatives.** Keep the table plural (`users`) — the most common workaround,
+but breaks the singular convention. Quote `"user"` everywhere — fragile and
+ugly.
+
+**Trade-offs.** The `app_` prefix is slightly arbitrary and appears on only
+this one table. Accepted as the least-bad option; it's a well-worn convention
+(Spring Security samples use it).

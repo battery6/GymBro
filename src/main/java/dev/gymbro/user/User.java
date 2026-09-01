@@ -14,7 +14,7 @@ import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "users")
+@Table(name = "app_user")
 public class User {
 
     @Id

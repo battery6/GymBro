@@ -11,7 +11,7 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "refresh_tokens")
+@Table(name = "refresh_token")
 public class RefreshToken {
 
     @Id

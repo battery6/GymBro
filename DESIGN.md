@@ -53,10 +53,10 @@ applications, and used daily as a personal training/nutrition log.
 
 ### Conventions
 
-- All timestamps are stored as `timestamptz` in UTC. Local calendar dates used
-  for reporting ("meals on 2026-08-31", "training days") are derived from the
-  owning user's `timezone`. No naive dates are stored for user-generated
-  events. `[ADR-002]`
+- Instants (`created_at`, `start_time`, `logged_at`, …) are stored as
+  `timestamptz`. Calendar-day grouping uses an explicit stored `date` on the
+  logged row (`workout_session.date`, `meal_entry` date) rather than deriving
+  it per-user-timezone. `[ADR-002]`
 - All user-owned resources are scoped to the authenticated principal at the
   repository layer. Requests for another user's resource return `404`, not
   `403`, so resource existence is not leaked. `[ADR-006]`
@@ -68,85 +68,79 @@ applications, and used daily as a personal training/nutrition log.
 
 ### 3.1 Gym module
 
-**User**
-- `id`, `email` (unique, citext), `password_hash` (BCrypt/Argon2),
-  `display_name`, `timezone` (IANA, e.g. `Europe/Stockholm`),
-  `unit_system` (ENUM: METRIC, IMPERIAL), `created_at`, `updated_at`
+> As built in `V1__user_schema.sql` and `V2__gym_schema.sql`. Table names are
+> singular (`app_user`, not `user`, because `user` is a reserved word — see
+> ADR-015).
 
-**Exercise**
-- `id`, `name`, `equipment` (ENUM), `modality` (ENUM: WEIGHTS,
-  BODYWEIGHT, MACHINE, CABLE, ... — informational in v1),
-  `is_bodyweight` (bool — affects volume calc, see below),
-  `created_by` (nullable FK to User; null = system-seeded)
-- `is_custom` is **not** stored — it is exactly `created_by IS NOT NULL`.
-  `[ADR-010]`
-- Unique constraint on `(lower(name), created_by)` — a user can't create two
-  custom exercises with the same name, but their custom name may shadow a
-  system name.
+**app_user**
+- `id`, `email` (unique, citext), `password_hash` (BCrypt), `display_name`,
+  `timezone` (IANA, e.g. `Europe/Stockholm`), `unit_system` (METRIC | IMPERIAL),
+  `created_at`, `updated_at`
+
+**exercise**
+- `id`, `created_by` (nullable FK to `app_user`, `ON DELETE SET NULL`; null =
+  system-seeded), `name`, `equipment` (text, nullable), `description`
+  (nullable), `is_custom` (bool, default false), `created_at`, `updated_at`
+- `is_custom` is an explicit denormalized flag the application sets alongside
+  `created_by` (kept for simple filtering). `[ADR-010]`
 - Seeded via a Flyway migration (`V00X__seed_exercises.sql`), not an
   application startup runner — deterministic, versioned, testable. `[ADR-008]`
 
-**MuscleGroup** (ENUM, not a table): CHEST, BACK, QUADS, HAMSTRINGS, GLUTES,
-CALVES, SHOULDERS, BICEPS, TRICEPS, FOREARMS, ABS, TRAPS, ...
+**muscle_group** (a table, not an enum)
+- `id`, `name` (unique), `created_at`
+- Also seeded via migration. `[ADR-001]`
 
-**ExerciseMuscle** (join table — an exercise trains several muscles)
-- `exercise_id`, `muscle_group` (ENUM), `role` (ENUM: PRIMARY, SECONDARY),
-  `contribution` (numeric(3,2), 0.00–1.00)
-- PK `(exercise_id, muscle_group)`
-- `contribution` lets per-muscle volume be apportioned: bench press might be
-  chest 0.60 / triceps 0.25 / front-delt 0.15. Sum per exercise is not
-  strictly enforced to 1.0 but seed data will follow that convention.
-  `[ADR-001]`
+**exercise_muscle_group** (join — an exercise trains several muscles)
+- `exercise_id` (FK `exercise`, cascade), `muscle_group_id` (FK `muscle_group`,
+  cascade), `is_primary` (bool, default false)
+- PK `(exercise_id, muscle_group_id)`; index on `muscle_group_id` for the
+  volume-by-muscle report.
+- Volume attribution is by membership, optionally filtered to `is_primary` —
+  there is no fractional contribution weight in v1. `[ADR-001]`
 
-**WorkoutTemplate**
-- `id`, `user_id`, `name`, `description`, `created_at`, `updated_at`
+**workout_template**
+- `id`, `user_id` (FK `app_user`), `name`, `description` (nullable),
+  `created_at`, `updated_at`
 - A reusable *plan*, e.g. "Push Day A".
 
-**TemplateExercise**
-- `id`, `template_id`, `exercise_id`, `order_index`, `target_sets`,
-  `target_reps_min`, `target_reps_max`, `target_rpe` (nullable)
-- Rep ranges are common ("8–12"); a single target is `min == max`.
+**template_exercise**
+- `id`, `template_id` (FK `workout_template`, cascade), `exercise_id`
+  (FK `exercise`), `order_index`, `target_sets`, `target_reps` (single int),
+  `target_rpe` (nullable, `numeric(3,1)`), `created_at`, `updated_at`
+- `UNIQUE (template_id, order_index)`.
 
-**WorkoutSession**
-- `id`, `user_id`, `template_id` (nullable — sessions can be freeform),
-  `status` (ENUM: IN_PROGRESS, COMPLETED, ABANDONED),
-  `started_at`, `completed_at` (nullable), `notes`,
-  `bodyweight_kg` (nullable — optional stretch metric for correlation)
-- No stored `date` column — the session's calendar date is
-  `date(started_at AT TIME ZONE user.timezone)`. `[ADR-002]`
+**workout_session**
+- `id`, `user_id` (FK `app_user`), `template_id` (nullable FK,
+  `ON DELETE SET NULL` — sessions can be freeform), `date` (date, default
+  `current_date`), `start_time` (timestamptz), `end_time` (nullable
+  timestamptz — a session is "complete" once this is set), `notes`,
+  `created_at`, `updated_at`
+- The `date` is stored explicitly rather than derived from a timezone-adjusted
+  timestamp. `[ADR-002]`
 
-**SessionExercise**
-- `id`, `session_id`, `exercise_id`, `order_index`,
-  `planned_sets`, `planned_reps_min`, `planned_reps_max`, `planned_rpe`
-- When a session is started from a template, the template's targets are
-  **copied here**. Editing or deleting the template afterwards does not change
-  what this session was planned to be, so "planned vs actual" stays truthful.
-  Freeform sessions create these rows on the fly with null planned_* values.
-  `[ADR-003]`
-
-**SetEntry**
-- `id`, `session_exercise_id`, `set_number`, `reps`, `weight_kg`,
-  `rpe` (nullable, numeric(3,1), validated 5.0–10.0),
-  `is_warmup` (bool, default false)
-- (Reserved for post-v1: `duration_seconds`, `distance_m` — nullable, unused.)
+**set_entry**
+- `id`, `session_id` (FK `workout_session`, cascade), `exercise_id`
+  (FK `exercise`), `set_index`, `reps`, `weight_kg` (`numeric(6,2)`),
+  `rpe` (nullable, `numeric(3,1)`), `is_warmup` (bool, default false),
+  `created_at`, `updated_at`
+- Sets hang off the session and name their exercise directly; there is no
+  `session_exercise` snapshot table. `[ADR-003]`
 
 **Volume**
-- Working-set volume for a set = `reps × effective_weight_kg`, warmups
-  excluded.
-- `effective_weight_kg` = `weight_kg` for loaded exercises. For exercises
-  flagged `is_bodyweight`, `weight_kg` is treated as *added* load and
-  `effective_weight_kg = weight_kg + session.bodyweight_kg` (falling back to
-  the user's latest known bodyweight, else the set contributes 0 and is
-  flagged in the response). `[ADR-011]`
+- Working-set volume for a set = `reps × weight_kg`, warmups excluded.
+- Bodyweight movements are logged with the effective load in `weight_kg`
+  (v1 has no dedicated bodyweight handling). `[ADR-011]`
 
 **Design notes**
-- Templates and Sessions stay separate: a `WorkoutTemplate` is a plan, a
-  `WorkoutSession` is a historical record. The `SessionExercise` snapshot is
-  what makes this separation actually hold up over time.
-- `order_index` on both `TemplateExercise` and `SessionExercise` allows
-  reordering without relying on insertion order.
-- Supersets/circuits are not modeled in v1 (order_index can't express
-  grouping). Noted as a known limitation.
+- Templates and Sessions are still separate concepts — a `workout_template` is
+  a plan, a `workout_session` is what happened. Because sessions do not
+  snapshot the template, a "planned vs actual" comparison reads the template
+  as it stands *now*; editing a template changes that reference for past
+  sessions. Accepted for v1. `[ADR-003]`
+- `template_exercise.order_index` allows reordering without relying on
+  insertion order.
+- Supersets/circuits are not modeled in v1 (`order_index` can't express
+  grouping). Known limitation.
 
 ### 3.2 Nutrition module
 
@@ -172,7 +166,8 @@ CALVES, SHOULDERS, BICEPS, TRICEPS, FOREARMS, ABS, TRAPS, ...
   `quantity_grams × Food.*_per_100g`. Later corrections to the underlying
   `Food` (especially a re-synced USDA row) do not rewrite history. The
   `food_id` is kept for provenance and re-logging convenience. `[ADR-004]`
-- Calendar date is `date(logged_at AT TIME ZONE user.timezone)`.
+- Stores an explicit `date` alongside `logged_at`, set from the client's local
+  day (consistent with `workout_session.date`, `[ADR-002]`).
 
 **NutritionGoal**
 - `id`, `user_id`, `calories`, `protein_g`, `carbs_g`, `fat_g`,
@@ -195,10 +190,10 @@ CALVES, SHOULDERS, BICEPS, TRICEPS, FOREARMS, ABS, TRAPS, ...
 ### 3.3 Connective / reporting layer
 
 **DailyLog** — computed on demand, not stored. `[ADR-007]`
-- Aggregates per user per local day: total working-set volume, volume by
-  muscle group (apportioned via `ExerciseMuscle.contribution`), total
-  calories, macro totals, the active `NutritionGoal` for that day, and
-  whether a session was `COMPLETED`.
+- Aggregates per user per day (`workout_session.date` / `meal_entry` date):
+  total working-set volume, volume by muscle group, total calories, macro
+  totals, the active `NutritionGoal` for that day, and whether a session was
+  completed (`end_time IS NOT NULL`).
 - A `@Scheduled` weekly-summary materialization is explicitly deferred to
   v1.1. If added, it is framed as a cache/rollup layer over the same
   computation, not a second source of truth.
@@ -206,15 +201,15 @@ CALVES, SHOULDERS, BICEPS, TRICEPS, FOREARMS, ABS, TRAPS, ...
 **DailyMetric** (optional stretch entity)
 - `id`, `user_id`, `date`, `bodyweight_kg` (nullable), `sleep_hours`
   (nullable)
-- Feeds the training-vs-rest comparison. `WorkoutSession.bodyweight_kg` is a
-  convenience duplicate for the common "weighed myself before lifting" case.
+- Feeds the training-vs-rest comparison.
 
 **Reporting queries to build** (the non-CRUD logic):
 
 1. **Weekly training volume trend per muscle group** — hand-written SQL.
-   Groups `SetEntry` → `SessionExercise` → `Exercise` → `ExerciseMuscle`,
-   apportions volume by `contribution`, buckets by ISO week in the user's
-   timezone. Watch for N+1; use fetch joins / a projection query.
+   Joins `set_entry` → `exercise` → `exercise_muscle_group` → `muscle_group`,
+   attributes each set's `reps × weight_kg` to every linked muscle group
+   (optionally `is_primary` only), buckets by ISO week of
+   `workout_session.date`. Watch for N+1; use a projection query.
 
 2. **Progressive-overload suggestion** — pure function, no repository access.
    Spec'd in section 6.
@@ -225,7 +220,7 @@ CALVES, SHOULDERS, BICEPS, TRICEPS, FOREARMS, ABS, TRAPS, ...
 
 4. **Training-vs-rest comparison** (`/reports/training-vs-rest`, renamed from
    "correlation") — mean protein intake (and bodyweight/sleep if tracked) on
-   days with a `COMPLETED` session vs days without. Presented as descriptive
+   days with a completed session vs days without. Presented as descriptive
    statistics with the sample size shown; deliberately **not** called a
    correlation, because n is small and confounded. `[ADR-012]`
 
@@ -254,7 +249,7 @@ DELETE /api/v1/templates/{id}
 POST   /api/v1/sessions                  (optionally from templateId)
 GET    /api/v1/sessions?from=&to=&cursor=
 GET    /api/v1/sessions/{id}
-PATCH  /api/v1/sessions/{id}             (status, notes, bodyweight)
+PATCH  /api/v1/sessions/{id}             (end_time, notes)
 DELETE /api/v1/sessions/{id}
 POST   /api/v1/sessions/{id}/sets        (accepts one set OR a batch)
 DELETE /api/v1/sessions/{id}/sets/{setId}
@@ -317,8 +312,8 @@ it". `[ADR-013]`
    add `SetEntry` → `GET /sessions/{id}/suggestions`. Full unit +
    Testcontainers integration tests, GitHub Actions running them, image
    building. Nothing else moves until this is green.
-3. **Gym CRUD** — `WorkoutTemplate`, `TemplateExercise`, `SessionExercise`
-   snapshotting, `ExerciseMuscle`, batch set logging, DELETEs, validation.
+3. **Gym CRUD** — `WorkoutTemplate`, `TemplateExercise`, `exercise_muscle_group`
+   seeding, batch set logging, DELETEs, validation.
 4. **Progression logic** — harden the suggestion service against the test
    matrix in section 6.
 5. **Nutrition CRUD** — `Food`, `MealEntry` (frozen macros), `NutritionGoal`
@@ -341,26 +336,27 @@ TargetSpec) -> Suggestion`. No database access inside; the controller/service
 assembles `history`.
 
 **Inputs**
-- `history`: the last _N_ = 3 `WorkoutSession`s (most recent first) in which
+- `history`: the last _N_ = 3 `workout_session`s (most recent first) in which
   this exercise was performed, each reduced to its **working sets** only
   (`is_warmup = false`).
-- `target`: `planned_reps_min/max` and `planned_rpe` from the most recent
-  `SessionExercise` (or the template if never performed).
+- `target`: `target_reps` and `target_rpe` from the exercise's
+  `template_exercise` row for the current session's template (or, for a
+  freeform session, the most recent `template_exercise` for that exercise
+  across the user's templates; none → treat as no target).
 
 **Rule (v1)**
 - If the exercise has **never** been performed → suggest the target as-is,
   `reason = NO_HISTORY`.
 - If it was performed **fewer than N** times → use what exists.
 - Let `lastSession` be the most recent performance. If in `lastSession`
-  **every working set** reached `reps >= planned_reps_min` **and** (RPE is
+  **every working set** reached `reps >= target_reps` **and** (RPE is
   recorded for all sets → `max(rpe) <= 8.0`; RPE missing → treat the rep
   condition alone as sufficient) → **increase load** by 2.5% (upper-body) /
-  5% (lower-body), rounded to the nearest 2.5 kg, keep reps at
-  `planned_reps_min`. `reason = PROGRESS_LOAD`.
-- Else if `lastSession` hit `planned_reps_min` on every set but RPE > 8 →
-  **hold load, add one rep** toward `planned_reps_max`. `reason =
-  PROGRESS_REPS`.
-- Else if the **last two** sessions both failed to reach `planned_reps_min`
+  5% (lower-body), rounded to the nearest 2.5 kg, keep reps at `target_reps`.
+  `reason = PROGRESS_LOAD`.
+- Else if `lastSession` hit `target_reps` on every set but RPE > 8 →
+  **hold load, add one rep**. `reason = PROGRESS_REPS`.
+- Else if the **last two** sessions both failed to reach `target_reps`
   on a majority of sets → **deload** 10%. `reason = DELOAD`.
 - Else → **repeat** last session's load and reps. `reason = HOLD`.
 
@@ -372,7 +368,7 @@ assembles `history`.
 - first set hits, last set short → hold
 - two consecutive short sessions → deload
 - upper vs lower body rounding (2.5% vs 5%, round to 2.5 kg)
-- bodyweight exercise (added load 0 → suggest smallest increment or extra rep)
+- exercise logged at `weight_kg = 0` → suggest an extra rep rather than a load bump
 
 ---
 
@@ -382,14 +378,15 @@ assembles `history`.
   (section 6) and the reporting aggregations (3.3) are real service classes
   with their own unit tests.
 - **Write the tricky queries by hand** — volume-by-muscle-group over time is
-  a join across five tables with weighted apportionment and timezone-aware
-  week bucketing. Understand the SQL Hibernate produces.
-- **Keep plans and records separate** — templates vs sessions, and the
-  `SessionExercise` / frozen-`MealEntry` snapshots that make that separation
-  survive edits over time. `[ADR-003]`, `[ADR-004]`
-- **Point-in-time correctness** is a theme worth articulating: a log is a
-  historical record, so recomputing it from mutable reference data is a bug,
-  not a feature.
+  a join across `set_entry`, `exercise`, `exercise_muscle_group`,
+  `muscle_group`, and `workout_session`, bucketed by ISO week. Understand the
+  SQL Hibernate produces.
+- **Keep plans and records separate** — `workout_template` vs
+  `workout_session`. Nutrition still snapshots point-in-time via frozen
+  `MealEntry` macros. `[ADR-003]`, `[ADR-004]`
+- **Point-in-time correctness** is a theme worth articulating for nutrition:
+  a food log is a historical record, so recomputing it from mutable reference
+  data is a bug. Sessions take the lighter approach (`[ADR-003]`).
 - **Postgres beyond CRUD** — range types + exclusion constraint for goals,
   `citext` for email, `ON CONFLICT` upserts for the USDA cache.
 - **Resilience** — an external dependency in the request path is designed for
