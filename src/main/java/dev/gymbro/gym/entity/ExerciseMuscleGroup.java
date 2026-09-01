@@ -1,4 +1,4 @@
-package dev.gymbro.gym;
+package dev.gymbro.gym.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

@@ -8,7 +8,7 @@ import java.util.Date;
 import javax.crypto.SecretKey;
 
 import dev.gymbro.auth.AuthUser;
-import dev.gymbro.user.User;
+import dev.gymbro.user.entity.User;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;

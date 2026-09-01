@@ -1,4 +1,4 @@
-package dev.gymbro.auth;
+package dev.gymbro.auth.service;
 
 import java.time.DateTimeException;
 import java.time.ZoneId;
@@ -11,8 +11,8 @@ import dev.gymbro.auth.jwt.JwtService;
 import dev.gymbro.auth.refresh.RefreshTokenService;
 import dev.gymbro.common.error.ApiException;
 import dev.gymbro.common.error.ErrorType;
-import dev.gymbro.user.User;
-import dev.gymbro.user.UserRepository;
+import dev.gymbro.user.entity.User;
+import dev.gymbro.user.repository.UserRepository;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;

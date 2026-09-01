@@ -1,7 +1,9 @@
-package dev.gymbro.gym;
+package dev.gymbro.gym.repository;
 
 import java.util.List;
 import java.util.Optional;
+
+import dev.gymbro.gym.entity.WorkoutTemplate;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

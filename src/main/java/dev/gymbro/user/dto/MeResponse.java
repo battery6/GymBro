@@ -1,4 +1,7 @@
-package dev.gymbro.user;
+package dev.gymbro.user.dto;
+
+import dev.gymbro.user.entity.UnitSystem;
+import dev.gymbro.user.entity.User;
 
 public record MeResponse(
         Long id,
@@ -7,7 +10,7 @@ public record MeResponse(
         String timezone,
         UnitSystem unitSystem) {
 
-    static MeResponse from(User user) {
+    public static MeResponse from(User user) {
         return new MeResponse(
                 user.getId(),
                 user.getEmail(),

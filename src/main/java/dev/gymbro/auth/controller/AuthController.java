@@ -1,9 +1,10 @@
-package dev.gymbro.auth;
+package dev.gymbro.auth.controller;
 
 import dev.gymbro.auth.dto.LoginRequest;
 import dev.gymbro.auth.dto.RefreshRequest;
 import dev.gymbro.auth.dto.RegisterRequest;
 import dev.gymbro.auth.dto.TokenResponse;
+import dev.gymbro.auth.service.AuthService;
 
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;

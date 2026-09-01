@@ -1,4 +1,4 @@
-package dev.gymbro.gym;
+package dev.gymbro.gym.entity;
 
 import dev.gymbro.common.jpa.TimestampedEntity;
 
@@ -10,44 +10,36 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
- * A movement that can be performed in a workout. {@code createdBy == null} means
- * a system-seeded library exercise; a non-null value is a user's custom exercise
- * ("custom" is derived from this, not stored — see ADR-010).
+ * A multi-day plan (e.g. "PPL 6-day") that sequences several
+ * {@link WorkoutTemplate}s via {@link ProgramTemplate}. Owned by a user.
  */
 @Entity
-@Table(name = "exercise")
-public class Exercise extends TimestampedEntity {
+@Table(name = "workout_program")
+public class WorkoutProgram extends TimestampedEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "created_by")
-    private Long createdBy;
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
 
     @Column(nullable = false)
     private String name;
 
     @Column
-    private String equipment;
-
-    @Column
     private String description;
-
-    public boolean isCustom() {
-        return createdBy != null;
-    }
 
     public Long getId() {
         return id;
     }
 
-    public Long getCreatedBy() {
-        return createdBy;
+    public Long getUserId() {
+        return userId;
     }
 
-    public void setCreatedBy(Long createdBy) {
-        this.createdBy = createdBy;
+    public void setUserId(Long userId) {
+        this.userId = userId;
     }
 
     public String getName() {
@@ -56,14 +48,6 @@ public class Exercise extends TimestampedEntity {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getEquipment() {
-        return equipment;
-    }
-
-    public void setEquipment(String equipment) {
-        this.equipment = equipment;
     }
 
     public String getDescription() {

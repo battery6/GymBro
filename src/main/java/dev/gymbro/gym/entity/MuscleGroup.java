@@ -1,4 +1,4 @@
-package dev.gymbro.gym;
+package dev.gymbro.gym.entity;
 
 import dev.gymbro.common.jpa.TimestampedEntity;
 

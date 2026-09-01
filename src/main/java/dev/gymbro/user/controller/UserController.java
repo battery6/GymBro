@@ -1,8 +1,10 @@
-package dev.gymbro.user;
+package dev.gymbro.user.controller;
 
 import dev.gymbro.auth.AuthUser;
 import dev.gymbro.common.error.ApiException;
 import dev.gymbro.common.error.ErrorType;
+import dev.gymbro.user.dto.MeResponse;
+import dev.gymbro.user.repository.UserRepository;
 
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;

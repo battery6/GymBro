@@ -1,6 +1,8 @@
-package dev.gymbro.gym;
+package dev.gymbro.gym.repository;
 
 import java.util.List;
+
+import dev.gymbro.gym.entity.SetEntry;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

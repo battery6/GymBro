@@ -1,4 +1,4 @@
-package dev.gymbro.user;
+package dev.gymbro.user.entity;
 
 import java.time.Instant;
 

@@ -1,6 +1,8 @@
-package dev.gymbro.user;
+package dev.gymbro.user.repository;
 
 import java.util.Optional;
+
+import dev.gymbro.user.entity.User;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

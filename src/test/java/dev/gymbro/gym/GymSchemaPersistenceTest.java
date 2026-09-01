@@ -8,8 +8,26 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 import dev.gymbro.AbstractIntegrationTest;
-import dev.gymbro.user.User;
-import dev.gymbro.user.UserRepository;
+import dev.gymbro.gym.entity.Exercise;
+import dev.gymbro.gym.entity.ExerciseMuscleGroup;
+import dev.gymbro.gym.entity.MuscleGroup;
+import dev.gymbro.gym.entity.ProgramTemplate;
+import dev.gymbro.gym.entity.SetEntry;
+import dev.gymbro.gym.entity.TemplateExercise;
+import dev.gymbro.gym.entity.WorkoutProgram;
+import dev.gymbro.gym.entity.WorkoutSession;
+import dev.gymbro.gym.entity.WorkoutTemplate;
+import dev.gymbro.gym.repository.ExerciseMuscleGroupRepository;
+import dev.gymbro.gym.repository.ExerciseRepository;
+import dev.gymbro.gym.repository.MuscleGroupRepository;
+import dev.gymbro.gym.repository.ProgramTemplateRepository;
+import dev.gymbro.gym.repository.SetEntryRepository;
+import dev.gymbro.gym.repository.TemplateExerciseRepository;
+import dev.gymbro.gym.repository.WorkoutProgramRepository;
+import dev.gymbro.gym.repository.WorkoutSessionRepository;
+import dev.gymbro.gym.repository.WorkoutTemplateRepository;
+import dev.gymbro.user.entity.User;
+import dev.gymbro.user.repository.UserRepository;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
