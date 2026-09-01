@@ -13,7 +13,8 @@ create table exercise (
 create table muscle_group (
     id bigint generated always as identity primary key,
     name text not null unique,
-    created_at timestamptz not null default now()
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
 );
 
 create table exercise_muscle_group (

@@ -87,7 +87,7 @@ applications, and used daily as a personal training/nutrition log.
   application startup runner — deterministic, versioned, testable. `[ADR-008]`
 
 **muscle_group** (a table, not an enum)
-- `id`, `name` (unique), `created_at`
+- `id`, `name` (unique), `created_at`, `updated_at`
 - Also seeded via migration. `[ADR-001]`
 
 **exercise_muscle_group** (join — an exercise trains several muscles)
