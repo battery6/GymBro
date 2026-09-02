@@ -13,6 +13,8 @@ public interface TemplateExerciseRepository extends JpaRepository<TemplateExerci
 
     List<TemplateExercise> findByExerciseId(Long exerciseId);
 
+    boolean existsByExerciseId(Long exerciseId);
+
     Optional<TemplateExercise> findFirstByTemplateIdOrderByOrderIndexDesc(Long templateId);
 
     void deleteByTemplateId(Long templateId);

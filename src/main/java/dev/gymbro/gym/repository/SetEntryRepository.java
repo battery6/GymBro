@@ -12,5 +12,7 @@ public interface SetEntryRepository extends JpaRepository<SetEntry, Long> {
 
     List<SetEntry> findBySessionIdAndExerciseIdOrderBySetIndex(Long sessionId, Long exerciseId);
 
+    boolean existsByExerciseId(Long exerciseId);
+
     void deleteBySessionId(Long sessionId);
 }

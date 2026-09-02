@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorType {
 
     EMAIL_ALREADY_USED(HttpStatus.CONFLICT, "Email already registered"),
+    EXERCISE_IN_USE(HttpStatus.CONFLICT, "Exercise is referenced by a template or a logged set"),
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "Invalid email or password"),
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Refresh token is invalid, expired, or already used"),
     INVALID_TIMEZONE(HttpStatus.BAD_REQUEST, "Unknown timezone identifier"),
