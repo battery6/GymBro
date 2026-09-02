@@ -239,47 +239,48 @@ applications, and used daily as a personal training/nutrition log.
 
 ## 4. API surface
 
-All routes are under `/api/v1`. `[ADR-006]`
+All routes are under `/api`. `[ADR-006]`
 
 ```
-POST   /api/v1/auth/register
-POST   /api/v1/auth/login                -> { accessToken, refreshToken }
-POST   /api/v1/auth/refresh              -> { accessToken, refreshToken }
-POST   /api/v1/auth/logout               (revokes the refresh token)
+POST   /api/auth/register
+POST   /api/auth/login                -> { accessToken, refreshToken }
+POST   /api/auth/refresh              -> { accessToken, refreshToken }
+POST   /api/auth/logout               (revokes the refresh token)
 
-GET    /api/v1/exercises
-POST   /api/v1/exercises                 (custom exercise)
-DELETE /api/v1/exercises/{id}            (custom only; 409 if referenced)
+GET    /api/exercises
+POST   /api/exercises                 (custom exercise)
+DELETE /api/exercises/{id}            (custom only; 409 if referenced)
 
-GET    /api/v1/templates
-POST   /api/v1/templates
-GET    /api/v1/templates/{id}
-PUT    /api/v1/templates/{id}
-DELETE /api/v1/templates/{id}
+GET    /api/templates
+POST   /api/templates
+GET    /api/templates/{id}
+PUT    /api/templates/{id}
+DELETE /api/templates/{id}
+POST   /api/templates/{id}/exercises  (append a planned exercise)
 
-POST   /api/v1/sessions                  (optionally from templateId)
-GET    /api/v1/sessions?from=&to=&cursor=
-GET    /api/v1/sessions/{id}
-PATCH  /api/v1/sessions/{id}             (end_time, notes)
-DELETE /api/v1/sessions/{id}
-POST   /api/v1/sessions/{id}/sets        (accepts one set OR a batch)
-DELETE /api/v1/sessions/{id}/sets/{setId}
-GET    /api/v1/sessions/{id}/suggestions (progressive-overload suggestion)
+POST   /api/sessions                  (optionally from templateId)
+GET    /api/sessions?from=&to=&cursor=
+GET    /api/sessions/{id}
+PATCH  /api/sessions/{id}             (end_time, notes)
+DELETE /api/sessions/{id}
+POST   /api/sessions/{id}/sets        (accepts one set OR a batch)
+DELETE /api/sessions/{id}/sets/{setId}
+GET    /api/sessions/{id}/suggestions (progressive-overload suggestion)
 
-GET    /api/v1/foods/search?q=           (local-first; USDA fallback, see 4.1)
-POST   /api/v1/foods                     (custom food)
+GET    /api/foods/search?q=           (local-first; USDA fallback, see 4.1)
+POST   /api/foods                     (custom food)
 
-GET    /api/v1/meals?date=
-POST   /api/v1/meals
-DELETE /api/v1/meals/{id}
+GET    /api/meals?date=
+POST   /api/meals
+DELETE /api/meals/{id}
 
-GET    /api/v1/goals/current
-GET    /api/v1/goals                     (history)
-PUT    /api/v1/goals                     (closes current, opens new)
+GET    /api/goals/current
+GET    /api/goals                     (history)
+PUT    /api/goals                     (closes current, opens new)
 
-GET    /api/v1/reports/volume?weeks=
-GET    /api/v1/reports/macros?days=
-GET    /api/v1/reports/training-vs-rest?days=
+GET    /api/reports/volume?weeks=
+GET    /api/reports/macros?days=
+GET    /api/reports/training-vs-rest?days=
 ```
 
 **Conventions**

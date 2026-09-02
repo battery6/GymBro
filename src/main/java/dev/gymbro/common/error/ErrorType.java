@@ -14,6 +14,7 @@ public enum ErrorType {
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "Refresh token is invalid, expired, or already used"),
     INVALID_TIMEZONE(HttpStatus.BAD_REQUEST, "Unknown timezone identifier"),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication required"),
+    NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found"),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests");
 
     private final HttpStatus status;

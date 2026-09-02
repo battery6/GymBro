@@ -70,11 +70,11 @@ App: <http://localhost:8080> · Swagger UI: <http://localhost:8080/swagger-ui.ht
 ## Auth flow (implemented in step 1)
 
 ```
-POST /api/v1/auth/register   { email, password, displayName, timezone? } -> 201 { accessToken, refreshToken, ... }
-POST /api/v1/auth/login      { email, password }                         -> 200 { accessToken, refreshToken, ... }
-POST /api/v1/auth/refresh    { refreshToken }                            -> 200 { new pair }  (old refresh token is revoked)
-POST /api/v1/auth/logout     { refreshToken }                            -> 204
-GET  /api/v1/users/me        Authorization: Bearer <accessToken>         -> 200 { id, email, displayName, timezone, unitSystem }
+POST /api/auth/register   { email, password, displayName, timezone? } -> 201 { accessToken, refreshToken, ... }
+POST /api/auth/login      { email, password }                         -> 200 { accessToken, refreshToken, ... }
+POST /api/auth/refresh    { refreshToken }                            -> 200 { new pair }  (old refresh token is revoked)
+POST /api/auth/logout     { refreshToken }                            -> 204
+GET  /api/users/me        Authorization: Bearer <accessToken>         -> 200 { id, email, displayName, timezone, unitSystem }
 ```
 
 Access tokens are stateless HS256 JWTs (15 min). Refresh tokens are opaque,

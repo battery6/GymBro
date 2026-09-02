@@ -27,12 +27,12 @@ class RateLimitIntegrationTest extends AbstractIntegrationTest {
 
         for (int i = 0; i < 3; i++) {
             ResponseEntity<JsonNode> response =
-                    rest.postForEntity("/api/v1/auth/login", credentials, JsonNode.class);
+                    rest.postForEntity("/api/auth/login", credentials, JsonNode.class);
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         }
 
         ResponseEntity<JsonNode> limited =
-                rest.postForEntity("/api/v1/auth/login", credentials, JsonNode.class);
+                rest.postForEntity("/api/auth/login", credentials, JsonNode.class);
         assertThat(limited.getStatusCode()).isEqualTo(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(limited.getBody().get("code").asText()).isEqualTo("RATE_LIMITED");
     }

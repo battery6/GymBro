@@ -159,11 +159,15 @@ gets a dedicated `UsdaFoodMapper` with fixture-based tests.
 
 ---
 
-## ADR-006 — API is versioned, user-scoped at the repository layer, and uses RFC 7807
+## ADR-006 — API is user-scoped at the repository layer, unversioned in the URL, and uses RFC 7807
 
-**Date:** 2026-08-31 · **Status:** Accepted
+**Date:** 2026-08-31 · **Revisited:** 2026-09-02 · **Status:** Accepted (versioning dropped)
 
-- **Versioning:** all routes under `/api/v1`. Free now, painful to retrofit.
+- **Versioning:** all routes are under `/api` with **no version segment**.
+  Originally `/api/v1`; dropped while pre-v1 (ADR-016) since there are no
+  external consumers to protect and the extra segment is noise. If a
+  backwards-incompatible change is ever needed after release, introduce
+  `/api/v2` alongside `/api` at that point.
 - **Ownership:** every user-owned resource is filtered by the authenticated
   principal in the repository/query layer. Another user's resource returns
   `404`, not `403`, so existence isn't leaked. A single enforcement point

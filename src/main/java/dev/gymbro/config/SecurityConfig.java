@@ -20,7 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private static final String[] PUBLIC_PATHS = {
-            "/api/v1/auth/**",
+            "/api/auth/**",
             "/actuator/health/**",
             "/actuator/info",
             "/v3/api-docs/**",

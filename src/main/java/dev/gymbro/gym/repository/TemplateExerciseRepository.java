@@ -1,6 +1,7 @@
 package dev.gymbro.gym.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import dev.gymbro.gym.entity.TemplateExercise;
 
@@ -11,6 +12,8 @@ public interface TemplateExerciseRepository extends JpaRepository<TemplateExerci
     List<TemplateExercise> findByTemplateIdOrderByOrderIndex(Long templateId);
 
     List<TemplateExercise> findByExerciseId(Long exerciseId);
+
+    Optional<TemplateExercise> findFirstByTemplateIdOrderByOrderIndexDesc(Long templateId);
 
     void deleteByTemplateId(Long templateId);
 }

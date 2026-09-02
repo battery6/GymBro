@@ -19,7 +19,7 @@ public class WebConfig {
 
         FilterRegistrationBean<RateLimitFilter> registration =
                 new FilterRegistrationBean<>(new RateLimitFilter(properties, objectMapper));
-        registration.addUrlPatterns("/api/v1/auth/*");
+        registration.addUrlPatterns("/api/auth/*");
         registration.setOrder(Ordered.HIGHEST_PRECEDENCE + 10);
         registration.setName("rateLimitFilter");
         return registration;
