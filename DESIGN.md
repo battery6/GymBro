@@ -255,8 +255,15 @@ GET    /api/templates
 POST   /api/templates
 GET    /api/templates/{id}
 PUT    /api/templates/{id}
-DELETE /api/templates/{id}
+DELETE /api/templates/{id}            (409 if slotted into a program)
 POST   /api/templates/{id}/exercises  (append a planned exercise)
+
+GET    /api/programs
+POST   /api/programs
+GET    /api/programs/{id}
+PUT    /api/programs/{id}
+DELETE /api/programs/{id}
+POST   /api/programs/{id}/templates   (append a template slot)
 
 POST   /api/sessions                  (optionally from templateId)
 GET    /api/sessions?from=&to=&cursor=
