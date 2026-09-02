@@ -62,6 +62,7 @@ public class WorkoutSessionService {
         return SessionResponse.from(workoutSessionRepository.save(session));
     }
 
+    @Transactional(readOnly = true)
     public List<SessionResponse> list(Long userId, LocalDate from, LocalDate to) {
         List<WorkoutSession> sessions = (from != null && to != null)
                 ? workoutSessionRepository.findByUserIdAndAtDateBetweenOrderByAtDate(userId, from, to)

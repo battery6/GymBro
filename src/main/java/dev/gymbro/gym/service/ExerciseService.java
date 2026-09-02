@@ -32,6 +32,7 @@ public class ExerciseService {
     }
 
     /** The system library plus the caller's own custom exercises, ordered by name. */
+    @Transactional(readOnly = true)
     public List<ExerciseResponse> list(Long userId) {
         return exerciseRepository.findByCreatedByIsNullOrCreatedBy(userId).stream()
                 .sorted(Comparator.comparing(Exercise::getName, String.CASE_INSENSITIVE_ORDER))

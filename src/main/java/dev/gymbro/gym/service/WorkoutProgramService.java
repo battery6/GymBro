@@ -37,6 +37,7 @@ public class WorkoutProgramService {
         this.workoutTemplateRepository = workoutTemplateRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<WorkoutProgramResponse> list(Long userId) {
         return workoutProgramRepository.findByUserId(userId).stream()
                 .map(WorkoutProgramResponse::from)
