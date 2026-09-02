@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Read access to the authenticated user's own profile. */
 @RestController
 @RequestMapping("/api/users")
 public class UserController {

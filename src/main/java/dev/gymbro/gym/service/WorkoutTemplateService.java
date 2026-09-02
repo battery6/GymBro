@@ -22,6 +22,11 @@ import dev.gymbro.gym.repository.WorkoutTemplateRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Manages reusable single-workout plans and their ordered planned exercises.
+ * A template is the "plan" half of the plan-vs-record split (ADR-003); all
+ * operations are scoped to the owning user (ADR-006).
+ */
 @Service
 public class WorkoutTemplateService {
 
@@ -82,6 +87,13 @@ public class WorkoutTemplateService {
         return WorkoutTemplateResponse.from(workoutTemplateRepository.save(template));
     }
 
+    /**
+     * Deletes a template. Refuses with {@link ErrorType#TEMPLATE_IN_USE} (409)
+     * while any program still slots it, because {@code program_template} has no
+     * database cascade from {@code workout_template}. Planned exercises cascade
+     * away in the database, and past sessions keep their history with
+     * {@code template_id} nulled.
+     */
     @Transactional
     public void delete(Long userId, Long templateId) {
         WorkoutTemplate template = requireOwned(userId, templateId);
@@ -97,6 +109,11 @@ public class WorkoutTemplateService {
         workoutTemplateRepository.delete(template);
     }
 
+    /**
+     * Appends a planned exercise as the last entry in the template. The template
+     * must belong to the caller and the exercise must exist (each a 404
+     * otherwise, ADR-006).
+     */
     @Transactional
     public TemplateExerciseResponse addExercise(
             Long userId, Long templateId, AddTemplateExerciseRequest request) {
@@ -124,11 +141,13 @@ public class WorkoutTemplateService {
         return TemplateExerciseResponse.from(saved, exercise.getName());
     }
 
+    /** Loads a template the caller owns, or throws 404 — never 403 — for anything else (ADR-006). */
     private WorkoutTemplate requireOwned(Long userId, Long templateId) {
         return workoutTemplateRepository.findByIdAndUserId(templateId, userId)
                 .orElseThrow(() -> new ApiException(ErrorType.NOT_FOUND));
     }
 
+    /** Resolves planned-exercise ids to names in one query, to avoid an N+1 over the entries. */
     private Map<Long, String> exerciseNames(List<TemplateExercise> planned) {
         if (planned.isEmpty()) {
             return Map.of();

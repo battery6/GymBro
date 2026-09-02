@@ -10,6 +10,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
+/**
+ * A persisted refresh token. Only the SHA-256 hash of the token is stored, never
+ * the raw value; the row also carries expiry and a nullable {@code revokedAt} so
+ * a token can be invalidated server-side (logout, or rotation on use).
+ */
 @Entity
 @Table(name = "refresh_token")
 public class RefreshToken {
@@ -40,6 +45,7 @@ public class RefreshToken {
         }
     }
 
+    /** Whether the token can still be exchanged: neither revoked nor past its expiry. */
     public boolean isActive() {
         return revokedAt == null && expiresAt.isAfter(Instant.now());
     }

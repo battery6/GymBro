@@ -19,6 +19,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Endpoints for the exercise catalogue: browse the library plus one's own custom
+ * movements, add a custom movement, and remove one that isn't in use.
+ */
 @RestController
 @RequestMapping("/api/exercises")
 public class ExerciseController {

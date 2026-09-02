@@ -4,7 +4,8 @@ import java.time.Instant;
 
 /**
  * Partial update of a session. A non-null field is applied; a null field is left
- * unchanged. Setting {@code endTime} marks the session complete (ADR, DESIGN 3.1).
+ * unchanged (so a field cannot be cleared through this endpoint). Setting
+ * {@code endTime} is what marks the session complete (DESIGN &sect;3.1).
  */
 public record UpdateSessionRequest(
         Instant endTime,

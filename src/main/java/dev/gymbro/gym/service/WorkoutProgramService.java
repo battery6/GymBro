@@ -21,6 +21,10 @@ import dev.gymbro.gym.repository.WorkoutTemplateRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Manages multi-day programs — an ordered sequence of {@link WorkoutTemplate}
+ * slots. All operations are scoped to the owning user (ADR-006).
+ */
 @Service
 public class WorkoutProgramService {
 
@@ -86,6 +90,11 @@ public class WorkoutProgramService {
         workoutProgramRepository.delete(program);
     }
 
+    /**
+     * Appends a template as the next slot in the program. Both the program and
+     * the template must belong to the caller (each a 404 otherwise, ADR-006);
+     * the same template may be slotted more than once, at different positions.
+     */
     @Transactional
     public ProgramTemplateResponse addTemplate(
             Long userId, Long programId, AddProgramTemplateRequest request) {
@@ -112,11 +121,13 @@ public class WorkoutProgramService {
         return ProgramTemplateResponse.from(saved, template.getName());
     }
 
+    /** Loads a program the caller owns, or throws 404 — never 403 — for anything else (ADR-006). */
     private WorkoutProgram requireOwned(Long userId, Long programId) {
         return workoutProgramRepository.findByIdAndUserId(programId, userId)
                 .orElseThrow(() -> new ApiException(ErrorType.NOT_FOUND));
     }
 
+    /** Resolves slot template ids to names in one query, to avoid an N+1 over the slots. */
     private Map<Long, String> templateNames(List<ProgramTemplate> slots) {
         if (slots.isEmpty()) {
             return Map.of();

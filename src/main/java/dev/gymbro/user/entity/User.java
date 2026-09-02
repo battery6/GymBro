@@ -13,6 +13,12 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 
+/**
+ * An application account holder. {@code timezone} (an IANA zone id) is the
+ * anchor for grouping the user's workout and meal logs into calendar days
+ * (ADR-002); {@code unitSystem} affects display only. The table is
+ * {@code app_user} because {@code user} is reserved in Postgres (ADR-015).
+ */
 @Entity
 @Table(name = "app_user")
 public class User {

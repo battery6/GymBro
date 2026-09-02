@@ -1,5 +1,10 @@
 package dev.gymbro.auth.dto;
 
+/**
+ * A newly issued credential pair. {@code tokenType} is always {@code "Bearer"};
+ * {@code expiresInSeconds} is the lifetime of {@code accessToken} only — the
+ * refresh token lives longer and is rotated on each use.
+ */
 public record TokenResponse(
         String accessToken,
         String refreshToken,

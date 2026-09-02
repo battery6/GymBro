@@ -15,6 +15,11 @@ import dev.gymbro.gym.repository.TemplateExerciseRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * The exercise catalogue: the shared seeded library plus each user's private
+ * custom movements. Enforces that a user only sees and mutates the library and
+ * their own additions.
+ */
 @Service
 public class ExerciseService {
 

@@ -35,6 +35,10 @@ public class RefreshTokenService {
         this.ttl = jwtProperties.refreshTokenTtl();
     }
 
+    /**
+     * Generates a new refresh token, persists only its hash, and returns the raw
+     * token — the one and only time the caller can see the cleartext value.
+     */
     @Transactional
     public String issue(Long userId) {
         byte[] raw = new byte[TOKEN_BYTES];
@@ -49,7 +53,12 @@ public class RefreshTokenService {
         return token;
     }
 
-    /** Validates the presented token, revokes it, and returns the owning user id. */
+    /**
+     * Validates the presented token, revokes it (tokens are single-use), and
+     * returns the owning user id. Throws {@link ApiException} with
+     * {@link ErrorType#INVALID_REFRESH_TOKEN} if the token is unknown, expired,
+     * or already revoked.
+     */
     @Transactional
     public Long rotate(String presentedToken) {
         RefreshToken entity = repository.findByTokenHash(hash(presentedToken))
@@ -61,6 +70,11 @@ public class RefreshTokenService {
         return entity.getUserId();
     }
 
+    /**
+     * Best-effort revocation used by logout: an unknown or already-inactive
+     * token is silently ignored so the endpoint is idempotent and reveals
+     * nothing about which tokens exist.
+     */
     @Transactional
     public void revoke(String presentedToken) {
         repository.findByTokenHash(hash(presentedToken))

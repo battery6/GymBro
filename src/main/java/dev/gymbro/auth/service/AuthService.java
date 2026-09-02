@@ -18,6 +18,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Orchestrates the credential lifecycle: verifies passwords, creates users, and
+ * issues a JWT access token paired with a rotating refresh token on every
+ * successful register / login / refresh.
+ */
 @Service
 public class AuthService {
 
@@ -37,10 +42,17 @@ public class AuthService {
         this.refreshTokens = refreshTokens;
     }
 
+    /**
+     * Creates a user and logs them in. Rejects an already-registered email with
+     * {@link ErrorType#EMAIL_ALREADY_USED} (409) and an unparseable timezone
+     * with {@link ErrorType#INVALID_TIMEZONE}.
+     */
     @Transactional
     public TokenResponse register(RegisterRequest request) {
         String email = request.email().trim();
         if (users.existsByEmail(email)) {
+            // Registration unavoidably reveals that an email is taken; login and
+            // refresh do not leak existence (ADR-017).
             throw new ApiException(ErrorType.EMAIL_ALREADY_USED);
         }
         String timezone = normalizeTimezone(request.timezone());
@@ -57,12 +69,20 @@ public class AuthService {
 
     @Transactional
     public TokenResponse login(LoginRequest request) {
+        // Unknown email and wrong password collapse into the same failure so an
+        // attacker can't enumerate which addresses have accounts (ADR-017).
         User user = users.findByEmail(request.email().trim())
                 .filter(candidate -> passwordEncoder.matches(request.password(), candidate.getPasswordHash()))
                 .orElseThrow(() -> new ApiException(ErrorType.INVALID_CREDENTIALS));
         return issueTokens(user);
     }
 
+    /**
+     * Rotates the presented refresh token and issues a fresh token pair. A token
+     * whose user has since been deleted also fails as
+     * {@link ErrorType#INVALID_REFRESH_TOKEN} — the outcome a client should treat
+     * identically (ADR-017).
+     */
     @Transactional
     public TokenResponse refresh(RefreshRequest request) {
         Long userId = refreshTokens.rotate(request.refreshToken());
@@ -82,6 +102,7 @@ public class AuthService {
         return TokenResponse.bearer(accessToken, refreshToken, jwtService.accessTtlSeconds());
     }
 
+    /** Blank / absent timezone defaults to {@code UTC}; anything else must be a resolvable zone id. */
     private static String normalizeTimezone(String requested) {
         if (requested == null || requested.isBlank()) {
             return "UTC";

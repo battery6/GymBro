@@ -368,3 +368,26 @@ small correction.
 their local database after a migration is rewritten rather than getting an
 incremental upgrade. Acceptable while there are no real users and the schema is
 unstable.
+
+---
+
+## ADR-017 — Login and refresh fail with one opaque error; registration cannot
+
+**Date:** 2026-09-02 · **Status:** Accepted
+
+**Context.** `POST /api/auth/login` can fail because the email is unknown or
+because the password is wrong. Returning distinct errors lets an attacker
+enumerate which addresses have accounts — the same existence-leak concern as
+ADR-006.
+
+**Decision.** Login collapses both cases into a single `INVALID_CREDENTIALS`:
+the user lookup and password check are one `Optional` chain, so the caller
+cannot tell which failed. Refresh behaves the same way — unknown, expired, and
+already-used tokens all return `INVALID_REFRESH_TOKEN`. Logout is idempotent
+and never reports whether the presented token existed.
+
+**Trade-offs.** `POST /api/auth/register` still returns `EMAIL_ALREADY_USED`
+(409), which does confirm an address is registered. Hiding that would need a
+confirmation-email flow (always return 202, send a "you already have an
+account" mail), which is out of scope for v1. Per-IP and per-account rate
+limiting on the auth endpoints is the compensating control.

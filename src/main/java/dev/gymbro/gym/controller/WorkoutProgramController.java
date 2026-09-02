@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** CRUD for multi-day programs, plus appending template slots to one. */
 @RestController
 @RequestMapping("/api/programs")
 public class WorkoutProgramController {

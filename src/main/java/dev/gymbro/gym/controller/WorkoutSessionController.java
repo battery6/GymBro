@@ -28,6 +28,15 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Endpoints for workout sessions and the sets logged against them: start,
+ * browse (optionally by date range), inspect with sets, end / annotate, delete,
+ * and add or remove sets.
+ *
+ * <p>{@code @Validated} is on the class so Bean Validation cascades into the
+ * elements of the {@code addSets} array body; Spring MVC does not validate
+ * collection elements on its own.
+ */
 @RestController
 @RequestMapping("/api/sessions")
 @Validated
@@ -83,6 +92,8 @@ public class WorkoutSessionController {
     public List<SetEntryResponse> addSets(
             @AuthenticationPrincipal AuthUser principal,
             @PathVariable Long sessionId,
+            // Body is always a JSON array (one set is an array of one); the inner
+            // @Valid, together with @Validated on the class, validates each element.
             @RequestBody @Valid List<@Valid LogSetRequest> sets) {
         return workoutSessionService.addSets(principal.id(), sessionId, sets);
     }

@@ -14,6 +14,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Public authentication endpoints: registration, password login, refresh-token
+ * rotation, and logout. Every response carries a fresh access/refresh token pair
+ * except logout, which returns 204.
+ */
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {

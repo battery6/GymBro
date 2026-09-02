@@ -34,6 +34,7 @@ public class JwtService {
         this.accessTtl = props.accessTokenTtl();
     }
 
+    /** Mints a signed access token with the user id as subject and the email as a claim. */
     public String generateAccessToken(User user) {
         Instant now = Instant.now();
         return Jwts.builder()

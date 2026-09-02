@@ -25,6 +25,11 @@ import dev.gymbro.gym.repository.WorkoutTemplateRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Records what was actually trained: sessions and the sets logged against them.
+ * A session may be freeform or linked to a template, and is "complete" once its
+ * end time is set. All operations are scoped to the owning user (ADR-006).
+ */
 @Service
 public class WorkoutSessionService {
 
@@ -44,6 +49,13 @@ public class WorkoutSessionService {
         this.exerciseRepository = exerciseRepository;
     }
 
+    /**
+     * Starts a session, optionally linked to one of the caller's templates
+     * (a template owned by someone else is a 404, ADR-006). When {@code atDate}
+     * is omitted the server date is used as a fallback — clients should send
+     * their own local day so the session lands on the right calendar day
+     * (ADR-002).
+     */
     @Transactional
     public SessionResponse create(Long userId, CreateSessionRequest request) {
         WorkoutSession session = new WorkoutSession();
@@ -78,6 +90,11 @@ public class WorkoutSessionService {
         return SessionDetailResponse.from(session, sets);
     }
 
+    /**
+     * Partial update. Only non-null fields are applied, so a caller cannot clear
+     * {@code notes} or reopen a session by sending an explicit null — that keeps
+     * the endpoint a safe merge, at the cost of not being able to unset a field.
+     */
     @Transactional
     public SessionResponse update(Long userId, Long sessionId, UpdateSessionRequest request) {
         WorkoutSession session = requireOwned(userId, sessionId);
@@ -98,9 +115,12 @@ public class WorkoutSessionService {
     }
 
     /**
-     * Appends one or more sets to a session. {@code setIndex} is assigned per
-     * exercise: sets of a given exercise are numbered 0, 1, 2, ... in the order
-     * they are logged.
+     * Appends one or more sets to a session in a single transaction (all or
+     * nothing). {@code setIndex} is assigned per exercise — sets of a given
+     * exercise are numbered 0, 1, 2, ... in log order — so the progression
+     * suggestion can read an exercise's working sets in sequence (DESIGN &sect;6).
+     * An unknown exercise id anywhere in the batch fails the whole request with
+     * a 404.
      */
     @Transactional
     public List<SetEntryResponse> addSets(Long userId, Long sessionId, List<LogSetRequest> requests) {
@@ -140,6 +160,7 @@ public class WorkoutSessionService {
         setEntryRepository.delete(set);
     }
 
+    /** Loads a session the caller owns, or throws 404 — never 403 — for anything else (ADR-006). */
     private WorkoutSession requireOwned(Long userId, Long sessionId) {
         return workoutSessionRepository.findByIdAndUserId(sessionId, userId)
                 .orElseThrow(() -> new ApiException(ErrorType.NOT_FOUND));

@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** CRUD for single-workout templates, plus appending planned exercises to one. */
 @RestController
 @RequestMapping("/api/templates")
 public class WorkoutTemplateController {
