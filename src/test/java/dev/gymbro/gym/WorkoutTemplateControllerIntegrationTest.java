@@ -60,6 +60,56 @@ class WorkoutTemplateControllerIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void listGetUpdateAndDeleteTemplate() {
+        String token = registerUser();
+        Long benchId = createExercise("Overhead Press");
+        long templateId = createTemplate(token, "Upper A");
+        addExercise(token, templateId, benchId, 3, 8, 8.0);
+
+        ResponseEntity<JsonNode> list = rest.exchange(
+                "/api/templates", HttpMethod.GET, new HttpEntity<>(bearer(token)), JsonNode.class);
+        assertThat(list.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(list.getBody()).anySatisfy(node ->
+                assertThat(node.get("id").asLong()).isEqualTo(templateId));
+
+        ResponseEntity<JsonNode> detail = rest.exchange(
+                "/api/templates/" + templateId, HttpMethod.GET,
+                new HttpEntity<>(bearer(token)), JsonNode.class);
+        assertThat(detail.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(detail.getBody().get("exercises")).hasSize(1);
+        assertThat(detail.getBody().get("exercises").get(0).get("exerciseName").asText())
+                .isEqualTo("Overhead Press");
+
+        ResponseEntity<JsonNode> updated = rest.exchange(
+                "/api/templates/" + templateId, HttpMethod.PUT,
+                new HttpEntity<>(Map.of("name", "Upper A (revised)"), bearer(token)), JsonNode.class);
+        assertThat(updated.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(updated.getBody().get("name").asText()).isEqualTo("Upper A (revised)");
+
+        ResponseEntity<Void> deleted = rest.exchange(
+                "/api/templates/" + templateId, HttpMethod.DELETE,
+                new HttpEntity<>(bearer(token)), Void.class);
+        assertThat(deleted.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
+
+        ResponseEntity<JsonNode> gone = rest.exchange(
+                "/api/templates/" + templateId, HttpMethod.GET,
+                new HttpEntity<>(bearer(token)), JsonNode.class);
+        assertThat(gone.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void cannotGetAnotherUsersTemplate() {
+        String owner = registerUser();
+        String intruder = registerUser();
+        long templateId = createTemplate(owner, "Private");
+
+        ResponseEntity<JsonNode> response = rest.exchange(
+                "/api/templates/" + templateId, HttpMethod.GET,
+                new HttpEntity<>(bearer(intruder)), JsonNode.class);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void createTemplateRequiresAuthentication() {
         ResponseEntity<JsonNode> response =
                 rest.postForEntity("/api/templates", Map.of("name", "X"), JsonNode.class);

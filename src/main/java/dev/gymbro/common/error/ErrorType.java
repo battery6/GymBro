@@ -16,6 +16,7 @@ public enum ErrorType {
     INVALID_TIMEZONE(HttpStatus.BAD_REQUEST, "Unknown timezone identifier"),
     UNAUTHENTICATED(HttpStatus.UNAUTHORIZED, "Authentication required"),
     NOT_FOUND(HttpStatus.NOT_FOUND, "Resource not found"),
+    TEMPLATE_IN_USE(HttpStatus.CONFLICT, "Template is referenced by a program"),
     RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "Too many requests");
 
     private final HttpStatus status;
