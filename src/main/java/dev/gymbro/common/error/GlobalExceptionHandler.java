@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -50,6 +51,32 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
                 .toList();
         body.setProperty("violations", violations);
         return ResponseEntity.badRequest().body(body);
+    }
+
+    /**
+     * Method-level Bean Validation on controller arguments — e.g. {@code @Valid}
+     * on the elements of a batch request body. Rendered identically to a body
+     * validation failure.
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ProblemDetail> handleConstraintViolation(ConstraintViolationException ex) {
+        ProblemDetail body = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+        body.setTitle("Validation error");
+        body.setType(URI.create(PROBLEM_BASE + "validation-error"));
+        body.setProperty("code", "VALIDATION_ERROR");
+        List<Map<String, String>> violations = ex.getConstraintViolations().stream()
+                .map(v -> Map.of(
+                        "field", lastNode(v.getPropertyPath().toString()),
+                        "message", Optional.ofNullable(v.getMessage()).orElse("invalid")))
+                .toList();
+        body.setProperty("violations", violations);
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    /** {@code addSets.sets[0].reps} -> {@code sets[0].reps}. */
+    private static String lastNode(String propertyPath) {
+        int firstDot = propertyPath.indexOf('.');
+        return firstDot >= 0 ? propertyPath.substring(firstDot + 1) : propertyPath;
     }
 
     @ExceptionHandler(Exception.class)
